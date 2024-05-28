@@ -1,0 +1,10 @@
+path: /home/ajkdrag/workspace/projects/object-detection-impl/data
+class_name: datamodules.image_clf_dm.ImageClfDatamodule
+dataset:
+  class_name: datasets.image_clf_ds.ImageClfDataset
+num_workers: 2
+batch_size: 32
+test_batch_size:
+pin_memory: True
+folder_struct: train_val_test
+parser_params: {}

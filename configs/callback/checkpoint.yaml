@@ -1,0 +1,8 @@
+model_checkpoint:
+  class_name: lightning.pytorch.callbacks.ModelCheckpoint
+  params:
+    monitor: valid_${training.monitor}
+    save_top_k: 1
+    dirpath: model_checkpoints
+    filename: '{epoch}-{valid_${training.monitor}:.6f}'
+    mode: ${training.mode}

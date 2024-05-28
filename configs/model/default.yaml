@@ -1,0 +1,17 @@
+class_name: models.nets.default.DefaultNet
+params:
+backbone:
+  class_name: models.backbones.resnet.ResNetBackbone
+  params:
+    arch: resnet18
+    pretrained: true
+    freeze: true
+head:
+  class_name: models.heads.fc.FullyConnectedHead
+  params:
+    layer_units: 
+      - 256
+      - ${training.n_classes}
+    activations: ["relu", "id"]
+    dropout_rates: [0.5, 0.5]
+    avg_pool_sz: 7

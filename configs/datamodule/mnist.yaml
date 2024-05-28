@@ -1,0 +1,8 @@
+path: /home/ajkdrag/workspace/projects/object-detection-impl/fmnist
+class_name: datamodules.mnist_dm.MnistDatamodule
+dataset:
+  class_name: datasets.mnist_ds.MnistDataset
+num_workers: 2
+batch_size: 32
+test_batch_size:
+pin_memory: True

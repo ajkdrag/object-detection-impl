@@ -1,0 +1,29 @@
+defaults:
+  - _self_
+  - training: default
+  - predict: default
+  - model: default
+  - datamodule: default
+  - augmentation: default
+  - optimizer: adam
+  - scheduler: plateau
+  - loss: cross_entropy
+  - metric: image_clf
+  - callback: default
+  - logging: default
+  - override hydra/job_logging: stdout
+
+general:
+  logs_folder_name: logs
+  root_dir: /home/ajkdrag/workspace/projects/object-detection-impl/experiments
+  workspace: ajkdrag
+  project_name: od-impl
+  device: cuda
+  exp_name: default
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: outputs/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${now:%Y-%m-%d_%H-%M-%S}_${hydra.job.num}

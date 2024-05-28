@@ -1,0 +1,23 @@
+train:
+  - class_name: albumentations.ShiftScaleRotate
+    params:
+      shift_limit: 0.0625
+      scale_limit: 0.1
+      rotate_limit: 10
+  - class_name: albumentations.Normalize
+    params:
+      mean: [0.1307, 0.1307, 0.1307]
+      std: [0.3081, 0.3081, 0.3081]
+      p: 1.0
+  - class_name: albumentations.pytorch.transforms.ToTensorV2
+    params:
+      p: 1.0
+val:
+  - class_name: albumentations.Normalize
+    params:
+      mean: [0.1307, 0.1307, 0.1307]
+      std: [0.3081, 0.3081, 0.3081]
+      p: 1.0
+  - class_name: albumentations.pytorch.transforms.ToTensorV2
+    params:
+      p: 1.0

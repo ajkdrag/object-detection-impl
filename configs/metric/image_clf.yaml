@@ -1,0 +1,4 @@
+defaults:
+  - accuracy
+  - f1_score
+_primary: accuracy

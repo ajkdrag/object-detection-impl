@@ -1,0 +1,3 @@
+defaults:
+  - checkpoint
+  - early_stopping

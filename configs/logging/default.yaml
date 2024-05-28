@@ -1,0 +1,6 @@
+log: True
+loggers:
+  - class_name: pytorch_lightning.loggers.CSVLogger
+    params:
+      save_dir: ${general.root_dir}
+      name: ${general.exp_name}/logs

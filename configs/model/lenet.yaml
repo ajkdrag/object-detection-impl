@@ -1,0 +1,13 @@
+class_name: models.nets.lenet.LeNetV2
+params:
+head:
+  class_name: models.heads.fc.FullyConnectedHead
+  params:
+    layer_units: 
+      - 120
+      - 84
+      - ${training.n_classes}
+    activations: ["relu", "relu", "id"]
+    dropout_rates: [0.5, 0.1, 0.0]
+    avg_pool_sz: 6
+

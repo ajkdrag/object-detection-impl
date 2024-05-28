@@ -1,0 +1,6 @@
+f1_score:
+  class_name: torchmetrics.F1Score
+  params:
+    task: multiclass
+    average: weighted
+    num_classes: ${training.n_classes}

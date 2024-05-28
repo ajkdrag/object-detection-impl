@@ -1,0 +1,61 @@
+from pathlib import Path
+
+import hydra
+import lightning as L
+import structlog
+from omegaconf import DictConfig, OmegaConf
+
+from object_detection_impl.utils.misc import log_useful_info, set_seed
+from object_detection_impl.utils.registry import load_obj
+
+log = structlog.get_logger()
+
+
+def _run(cfg: DictConfig) -> None:
+    set_seed(cfg.training.seed)
+    log.info("**** Running train func ****")
+
+    exp_name = cfg.general.exp_name
+    root_dir = Path(cfg.general.root_dir).joinpath(exp_name)
+
+    loggers = []
+    if cfg.logging.log:
+        for logger in cfg.logging.loggers:
+            loggers.append(load_obj(logger.class_name)(**logger.params))
+
+    callbacks = []
+    for callback_name, callback in cfg.callback.items():
+        if callback_name == "model_checkpoint":
+            callback.params.dirpath = root_dir.joinpath(
+                callback.params.dirpath
+            ).as_posix()
+        callback_instance = load_obj(callback.class_name)(**callback.params)
+        callbacks.append(callback_instance)
+
+    trainer = L.Trainer(
+        logger=loggers,
+        callbacks=callbacks,
+        **cfg.training.trainer_params,
+    )
+    model = load_obj(cfg.training.lit_model.class_name)(cfg=cfg)
+    dm = load_obj(cfg.datamodule.class_name)(cfg=cfg)
+    trainer.fit(model, dm)
+    trainer.test(model, dm, ckpt_path="best")
+    log.info(f"{root_dir = }")
+
+
+@hydra.main(
+    version_base=None,
+    config_path="conf",
+    config_name="config",
+)
+def run(cfg: DictConfig) -> None:
+    Path("logs").mkdir(exist_ok=True)
+    log.info(OmegaConf.to_yaml(cfg))
+    if cfg.general.log_code:
+        log_useful_info()
+    _run(cfg)
+
+
+if __name__ == "__main__":
+    run()
