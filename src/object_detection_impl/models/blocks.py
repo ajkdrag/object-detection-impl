@@ -37,7 +37,8 @@ class ConvBlock(nn.Module):
     ):
         super().__init__()
         bn_act_block = nn.Sequential(
-            nn.BatchNorm2d(in_channels) if pre else nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(in_channels) if pre else nn.BatchNorm2d(
+                out_channels),
             activation.value(),
         )
         layers = [
@@ -101,14 +102,20 @@ class Downsample1x1Block(Conv1x1Block):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        stride=1,
+        padding="same",
+    ):
         super().__init__()
         self.block = nn.Sequential(
             ConvBlock(
                 in_channels,
                 out_channels,
                 stride=stride,
-                padding=1,
+                padding=padding,
             ),
             ConvBlock(
                 out_channels,
