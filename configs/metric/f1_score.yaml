@@ -3,4 +3,4 @@ f1_score:
   params:
     task: multiclass
     average: weighted
-    num_classes: ${training.n_classes}
+    num_classes: ${datamodule.dataset.n_classes}

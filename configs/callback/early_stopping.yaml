@@ -2,7 +2,7 @@ early_stopping:
   class_name: lightning.pytorch.callbacks.EarlyStopping
   params:
     monitor: valid_${training.monitor}
-    patience: 5
+    patience: 8
     min_delta: 0.001
     verbose: True
     mode: ${training.mode}

@@ -1,13 +1,16 @@
-class_name: models.nets.lenet.LeNetV4
+class_name: models.nets.vit.ViTTiny
 input_size: 32 
+stem:
+  class_name: models.stems.patch.T2TPatch
+  params:
+    kernel_sizes: [3, 3]
+    strides: [2, 2]
 neck:
   class_name: models.necks.patch.PatchNorm
 head:
   class_name: models.heads.fc.FullyConnectedHead
   params:
     layer_units: 
-      - 32
       - ${datamodule.dataset.n_classes}
-    activations: ["relu", "id"]
-    dropout_rates: [0.2, 0.0]
-
+    activations: ["id"]
+    dropout_rates: [0.0]

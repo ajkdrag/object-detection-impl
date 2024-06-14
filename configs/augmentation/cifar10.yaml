@@ -1,0 +1,49 @@
+train:
+  - class_name: albumentations.RandomResizedCrop
+    params:
+      height: ${model.input_size}
+      width: ${model.input_size}
+      scale: [0.75, 1]
+      ratio: [0.75, 1.2]
+      p: 0.5
+  - class_name: albumentations.HorizontalFlip
+    params:
+      p: 0.5
+  - class_name: albumentations.ShiftScaleRotate
+    params:
+      shift_limit: 0.2
+      scale_limit: 0.1
+      rotate_limit: 20
+      p: 0.5
+  - class_name: albumentations.ColorJitter
+    params:
+      brightness: 0.2
+      contrast: 0.3
+      saturation: 0.2
+      hue: 0.2
+      p: 1.0
+  - class_name: albumentations.CoarseDropout
+    params:
+      num_holes_range: [1, 2]
+      hole_height_range: [8, 12]
+      hole_width_range: [8, 12]
+      fill_value: 120
+      p: 0.25
+  - class_name: albumentations.Normalize
+    params:
+      mean: ${datamodule.dataset.mean}
+      std: ${datamodule.dataset.std}
+      p: 1.0
+  - class_name: albumentations.pytorch.transforms.ToTensorV2
+    params:
+      p: 1.0
+
+val:
+  - class_name: albumentations.Normalize
+    params:
+      mean: ${datamodule.dataset.mean}
+      std: ${datamodule.dataset.std}
+      p: 1.0
+  - class_name: albumentations.pytorch.transforms.ToTensorV2
+    params:
+      p: 1.0

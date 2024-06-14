@@ -6,8 +6,8 @@ train:
       rotate_limit: 10
   - class_name: albumentations.Normalize
     params:
-      mean: [0.1307, 0.1307, 0.1307]
-      std: [0.3081, 0.3081, 0.3081]
+      mean: ${datamodule.dataset.mean}
+      std: ${datamodule.dataset.std}
       p: 1.0
   - class_name: albumentations.pytorch.transforms.ToTensorV2
     params:
@@ -15,8 +15,8 @@ train:
 val:
   - class_name: albumentations.Normalize
     params:
-      mean: [0.1307, 0.1307, 0.1307]
-      std: [0.3081, 0.3081, 0.3081]
+      mean: ${datamodule.dataset.mean}
+      std: ${datamodule.dataset.std}
       p: 1.0
   - class_name: albumentations.pytorch.transforms.ToTensorV2
     params:

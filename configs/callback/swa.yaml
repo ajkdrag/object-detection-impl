@@ -1,0 +1,4 @@
+swa:
+  class_name: lightning.pytorch.callbacks.StochasticWeightAveraging
+  params:
+    swa_lrs: 1e-2

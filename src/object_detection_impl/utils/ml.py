@@ -1,5 +1,7 @@
 from typing import Any, Optional
 
+from omegaconf import DictConfig
+
 
 def freeze_until(net: Any, param_name: Optional[str]) -> None:
     """
@@ -18,3 +20,14 @@ def freeze_until(net: Any, param_name: Optional[str]) -> None:
             found_name = True
         params.requires_grad = found_name
     return found_name
+
+
+def count_parameters(model: Any):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def swap_dims(x, d1, d2):
+    # x: torch.tensor, d1 and d2: dims to swap
+    dims = list(range(x.dim()))
+    dims[d1], dims[d2] = dims[d2], dims[d1]
+    return x.permute(dims)

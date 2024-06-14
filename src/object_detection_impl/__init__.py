@@ -4,18 +4,19 @@ import sys
 import structlog
 from structlog.processors import CallsiteParameter
 
-log = structlog.get_logger()
-
-# Disable uvicorn logging
-logging.getLogger("uvicorn.error").disabled = True
-logging.getLogger("uvicorn.access").disabled = True
-
 # Structlog configuration
 logging.basicConfig(
     format="%(message)s",
     stream=sys.stdout,
     level=logging.INFO,
 )
+
+# Disable uvicorn logging
+logging.getLogger("uvicorn.error").disabled = True
+logging.getLogger("uvicorn.access").disabled = True
+logging.getLogger("lightning").propagate = False
+
+
 structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,

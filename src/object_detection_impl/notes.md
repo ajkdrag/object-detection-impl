@@ -1,0 +1,4 @@
+- All stems receive and return input as `[n, c, h, w]` format
+- All stems have the func: get_shape which does a forward pass and returns shape.
+- Stem `expansions` get multiplied with the `out_channels`
+- `expansions` in other blocks like trunk, head etc, work on `in_channels` 

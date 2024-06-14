@@ -9,7 +9,9 @@ class LitImageClassifier(L.LightningModule):
         super().__init__()
         self.cfg = cfg
         self.model = load_obj(cfg.model.class_name)(cfg)
-        self.loss = load_obj(cfg.loss.class_name)()
+        self.loss = load_obj(cfg.loss.class_name)(
+            **cfg.loss.get("params", {}),
+        )
         self.metrics = nn.ModuleDict()
         for metric_name, metric in cfg.metric.items():
             if metric_name.startswith("_"):
@@ -32,6 +34,10 @@ class LitImageClassifier(L.LightningModule):
         return self(image).argmax(dim=-1)
 
     def configure_optimizers(self):
+        if self.cfg.scheduler.class_name.endswith(("OneCycleLR",)):
+            self.cfg.scheduler.params.total_steps = (
+                self.trainer.estimated_stepping_batches
+            )
         optimizer = load_obj(self.cfg.optimizer.class_name)(
             self.model.parameters(), **self.cfg.optimizer.params
         )
@@ -59,7 +65,7 @@ class LitImageClassifier(L.LightningModule):
         self.log(
             "train_loss",
             loss,
-            on_step=True,
+            on_step=False,
             on_epoch=True,
             prog_bar=True,
             logger=True,
@@ -70,11 +76,21 @@ class LitImageClassifier(L.LightningModule):
             self.log(
                 f"train_{metric}",
                 score,
-                on_step=True,
+                on_step=False,
                 on_epoch=True,
                 prog_bar=True,
                 logger=True,
             )
+
+        lr = self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
+        self.log(
+            "lr",
+            lr,
+            on_step=True,
+            prog_bar=True,
+            logger=True,
+        )
+
         return loss
 
     def validation_step(self, batch, *args, **kwargs):

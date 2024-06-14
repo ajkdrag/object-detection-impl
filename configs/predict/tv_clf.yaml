@@ -1,0 +1,7 @@
+checkpoint: model_checkpoints/epoch=28-valid_accuracy=0.906733.ckpt
+postprocessor:
+  func_name: postprocessor.tv_clf_pp.postprocess
+  params:
+    label_h: 20
+    size: 120
+

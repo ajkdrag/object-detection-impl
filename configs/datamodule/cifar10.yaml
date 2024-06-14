@@ -1,13 +1,13 @@
-path: /home/ajkdrag/workspace/projects/object-detection-impl/data/fmnist
+path: /home/ajkdrag/workspace/projects/object-detection-impl/data/cifar10
 class_name: datamodules.tv_clf_dm.TorchvisionClfDatamodule
 dataset:
   class_name: datasets.tv_clf_ds.TorchvisionClfDataset
-  name: FashionMNIST
-  mean: [0.1307, 0.1307, 0.1307]
-  std: [0.3081, 0.3081, 0.3081]
+  name: CIFAR10
+  mean: [0.4914, 0.4822, 0.4465]
+  std: [0.2471, 0.2435, 0.2616]
   n_classes: 10
 num_workers: 2
-batch_size: 32
+batch_size: ${training.bs}
 test_batch_size: 32
 pin_memory: True
 splits: [0.7, 0.3]

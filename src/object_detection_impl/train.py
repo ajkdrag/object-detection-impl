@@ -25,10 +25,9 @@ def _run(cfg: DictConfig) -> None:
 
     callbacks = []
     for callback_name, callback in cfg.callback.items():
-        if callback_name == "model_checkpoint":
-            callback.params.dirpath = root_dir.joinpath(
-                callback.params.dirpath
-            ).as_posix()
+        if callback_name in ["model_checkpoint", "vis_dls"]:
+            dirpath = root_dir.joinpath(callback.params.dirpath)
+            callback.params.dirpath = dirpath.as_posix()
         callback_instance = load_obj(callback.class_name)(**callback.params)
         callbacks.append(callback_instance)
 
@@ -39,7 +38,13 @@ def _run(cfg: DictConfig) -> None:
     )
     model = load_obj(cfg.training.lit_model.class_name)(cfg=cfg)
     dm = load_obj(cfg.datamodule.class_name)(cfg=cfg)
-    trainer.fit(model, dm)
+    trainer_kwargs = {}
+    if cfg.training.get("resume") is not None:
+        ckpt_dir = Path(cfg.callback.model_checkpoint.params.dirpath)
+        ckpt_path = ckpt_dir.joinpath(cfg.training.resume.checkpoint).as_posix()
+        log.info(f"Resuming from ckpt: {ckpt_path}")
+        trainer_kwargs["ckpt_path"] = ckpt_path
+    trainer.fit(model, dm, **trainer_kwargs)
     trainer.test(model, dm, ckpt_path="best")
     log.info(f"{root_dir = }")
 

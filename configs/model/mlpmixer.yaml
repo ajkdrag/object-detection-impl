@@ -1,0 +1,14 @@
+class_name: models.nets.mlpmixer.MDMLPTiny
+input_size: 32 
+stem:
+  class_name: models.stems.patch.MDMLPPatch
+  params:
+    kernel_size: 4
+    stride: 2
+head:
+  class_name: models.heads.fc.FullyConnectedHead
+  params:
+    layer_units: 
+      - ${datamodule.dataset.n_classes}
+    activations: ["id"]
+    dropout_rates: [0.0]
