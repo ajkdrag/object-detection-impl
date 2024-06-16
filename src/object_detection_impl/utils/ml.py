@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from omegaconf import DictConfig
+from torch import nn
 
 
 def freeze_until(net: Any, param_name: Optional[str]) -> None:
@@ -31,3 +31,10 @@ def swap_dims(x, d1, d2):
     dims = list(range(x.dim()))
     dims[d1], dims[d2] = dims[d2], dims[d1]
     return x.permute(dims)
+
+
+def init_linear(m):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        nn.init.kaiming_normal_(m.weight)
+        if m.bias is not None:
+            nn.init.zeros_(m.bias)

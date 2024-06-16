@@ -3,12 +3,14 @@ from pathlib import Path
 import hydra
 import lightning as L
 import structlog
+import torch
 from omegaconf import DictConfig, OmegaConf
 
 from object_detection_impl.utils.misc import log_useful_info, set_seed
 from object_detection_impl.utils.registry import load_obj
 
 log = structlog.get_logger()
+torch.set_float32_matmul_precision("medium")
 
 
 def _run(cfg: DictConfig) -> None:

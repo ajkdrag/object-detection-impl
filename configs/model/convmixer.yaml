@@ -1,7 +1,7 @@
 class_name: models.nets.convmixer.ConvMixerTiny
 input_size: 32 
 stem:
-  class_name: models.stems.patch.FCPatch
+  class_name: models.stems.patch.ConvPatch
   params:
     kernel_size: 4
     stride: 4

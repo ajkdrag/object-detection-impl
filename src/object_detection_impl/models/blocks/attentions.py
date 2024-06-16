@@ -68,7 +68,7 @@ class MultiHead_SA(nn.Module):
     def forward(self, x):
         normed = self.norm(self.stem(x))  # [n, p, c]
         attn_out, _ = self.mha(normed, normed, normed)
-        mha_out = self.scale * (attn_out + self.stem(self.shortcut(x)))
+        mha_out = self.scale * attn_out + self.stem(self.shortcut(x))
         out = self.mlp(mha_out) + self.mlp_flag * (mha_out)
 
         if len(x.shape) == 4:

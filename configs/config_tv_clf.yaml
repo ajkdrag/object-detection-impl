@@ -9,7 +9,7 @@ general:
 defaults:
   - _self_
   - datamodule: cifar10
-  - augmentation: ${datamodule}
+  - augmentation: ${datamodule}_v2
   - training: default
   - predict: tv_clf
   - model: vit

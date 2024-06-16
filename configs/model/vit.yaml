@@ -1,12 +1,12 @@
-class_name: models.nets.vit.ViTTiny
+class_name: models.nets.t2t.T2TViT
 input_size: 32 
 stem:
   class_name: models.stems.patch.T2TPatch
   params:
-    kernel_sizes: [3, 3]
-    strides: [2, 2]
+    kernel_sizes: [3, 3, 3]
+    strides: [2, 2, 2]
 neck:
-  class_name: models.necks.patch.PatchNorm
+  class_name: models.necks.patch.SequencePooling
 head:
   class_name: models.heads.fc.FullyConnectedHead
   params:

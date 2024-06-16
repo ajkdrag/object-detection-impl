@@ -4,6 +4,7 @@ from object_detection_impl.models.blocks.attentions import (
     LearnablePositionEnc,
     MultiHead_SA,
 )
+from object_detection_impl.utils.ml import init_linear
 from object_detection_impl.utils.registry import load_obj
 from omegaconf import DictConfig
 
@@ -28,11 +29,10 @@ class ViTTiny(nn.Module):
         self.trunk = nn.Sequential(
             Rearrange("n d h w -> n (h w) d"),
             LearnablePositionEnc(sizes=(stem_h * stem_w, embed_sz)),
-            * [
+            *[
                 MultiHead_SA(
                     embed_sz,
                     num_heads=heads,
-                    dropout=0.0,
                     expansion=1,
                 )
                 for _ in range(n_layers)
@@ -48,6 +48,8 @@ class ViTTiny(nn.Module):
             in_features=embed_sz,
             **config.model.head.params,
         )
+
+        self.apply(init_linear)
 
     def forward(self, x):
         return self.head(self.neck(self.trunk(self.stem(x))))

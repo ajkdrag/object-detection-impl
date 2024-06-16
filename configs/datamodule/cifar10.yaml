@@ -6,7 +6,7 @@ dataset:
   mean: [0.4914, 0.4822, 0.4465]
   std: [0.2471, 0.2435, 0.2616]
   n_classes: 10
-num_workers: 2
+num_workers: 8
 batch_size: ${training.bs}
 test_batch_size: 32
 pin_memory: True

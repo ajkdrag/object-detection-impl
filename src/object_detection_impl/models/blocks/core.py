@@ -10,7 +10,7 @@ class BasicFCLayer(nn.Module):
         in_features,
         out_features,
         activation=Activations.RELU(),
-        dropout=0.2,
+        dropout=0.0,
         bn=True,
         flatten=True,
     ):
@@ -41,7 +41,7 @@ class ExpansionFCLayer(nn.Sequential):
         expansion=4,
         out_features=None,
         activation=Activations.RELU(),
-        dropout=0.2,
+        dropout=0.0,
         bn=True,
     ):
         super().__init__(

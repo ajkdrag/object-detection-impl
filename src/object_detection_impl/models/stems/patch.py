@@ -18,7 +18,7 @@ class T2TPatch(BaseStem):
         out_channels,
         kernel_sizes,
         strides,
-        activation=Activations.ID(),
+        activation=Activations.GELU(),
         **kwargs,
     ):
         super().__init__()
@@ -29,7 +29,7 @@ class T2TPatch(BaseStem):
             layers.extend(
                 [
                     UnflattenLayer(),
-                    nn.Unfold(k_sz, stride=stride, padding=stride // 2),
+                    nn.Unfold(k_sz, stride=stride, padding=(k_sz - 1) // 2),
                     Rearrange("n c p -> n p c"),
                     MultiHead_SA(
                         in_channels,
@@ -40,9 +40,18 @@ class T2TPatch(BaseStem):
                     else nn.Identity(),
                 ]
             )
-        # layers.append(nn.LayerNorm(in_channels))
-        layers.append(nn.Linear(in_channels, out_channels))
-        layers.append(UnflattenLayer())
+        layers.append(
+            nn.Sequential(
+                BasicFCLayer(
+                    in_channels,
+                    out_channels,
+                    bn=False,
+                    activation=activation,
+                    flatten=False,
+                ),
+                UnflattenLayer(),
+            )
+        )
         self.block = nn.Sequential(*layers)
 
     def forward(self, x):
