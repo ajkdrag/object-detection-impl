@@ -2,5 +2,5 @@ class_name: torch.optim.lr_scheduler.OneCycleLR
 step: step
 monitor: train_${training.monitor}
 params:
-  max_lr: ${training.lr}
+  max_lr: ${training.max_lr}
   total_steps:

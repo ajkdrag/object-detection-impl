@@ -1,4 +1,5 @@
-lr: 0.001
+lr: 0.000001
+max_lr: 0.002
 wd: 0.1
 bs: 64
 epochs: 100
@@ -20,4 +21,4 @@ trainer_params:
   check_val_every_n_epoch: 1
   default_root_dir: ${general.root_dir}
 # resume:
-#   checkpoint: epoch=190-valid_accuracy=0.890667.ckpt
+#   checkpoint: epoch=26-valid_accuracy=0.881400.ckpt

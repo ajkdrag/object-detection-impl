@@ -2,17 +2,91 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
-from object_detection_impl.models.blocks.activations import Activations
-from object_detection_impl.models.blocks.attentions import Attentions
+from object_detection_impl.models.act_factory import Acts
+from object_detection_impl.models.attn_factory import Attentions
+from object_detection_impl.models.blocks.attentions import MultiHeadSA
 from object_detection_impl.models.blocks.core import (
     BottleneckLayer,
     Conv1x1Layer,
     ConvLayer,
     DenseShortcutLayer,
     ExpansionFCLayer,
+    FlattenLayer,
+    ScaledResidual,
     ShortcutLayer,
+    SoftSplit,
+    UnflattenLayer,
 )
 from object_detection_impl.utils.ml import swap_dims
+
+
+class T2TBlock(nn.Sequential):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        image_h,
+        num_heads=1,
+        expansion=1,
+        kernel_size=3,
+        stride=1,
+        dropout=0.0,
+        act="gelu",
+    ):
+        super().__init__(
+            TransformerEncoder(
+                in_channels,
+                num_heads,
+                dropout,
+                expansion,
+                act,
+            ),
+            UnflattenLayer(h=image_h),
+            SoftSplit(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+            ),
+        )
+
+
+class TransformerEncoder(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        num_heads=2,
+        dropout=0.0,
+        expansion=4,
+        act="gelu",
+    ):
+        super().__init__()
+        self.block = nn.Sequential(
+            ScaledResidual(
+                MultiHeadSA(
+                    in_channels,
+                    num_heads,
+                    dropout,
+                    norm="ln",
+                ),
+            ),
+            ScaledResidual(
+                ExpansionFCLayer(
+                    in_channels,
+                    expansion,
+                    dropout=dropout,
+                    act=act,
+                    norm="ln",
+                    norm_order="pre",
+                ),
+            ),
+        )
+
+    def forward(self, x):
+        out = self.block(x)  # [n, p, c]
+        if len(x.shape) == 4:
+            return rearrange(out, "n (h w) c -> n c h w", w=x.shape[-1])
+        return out
 
 
 class DenseNetBlock(nn.Module):
@@ -21,12 +95,20 @@ class DenseNetBlock(nn.Module):
         in_channels,
         growth_rate=32,
         num_layers=3,
-        activation=Activations.RELU(inplace=True),
+        act="relu",
+        norm="bn2d",
     ):
         super().__init__()
         layers = []
         for _ in range(num_layers):
-            layers.append(DenseShortcutLayer(in_channels, growth_rate))
+            layers.append(
+                DenseShortcutLayer(
+                    in_channels,
+                    growth_rate,
+                    act=act,
+                    norm=norm,
+                )
+            )
             in_channels += growth_rate
         self.block = nn.Sequential(*layers)
         self.out_channels = in_channels
@@ -40,38 +122,42 @@ class ResNetBlock(nn.Module):
         self,
         in_channels,
         out_channels=None,
+        kernel_size=3,
         stride=1,
-        activation=Activations.RELU(inplace=True),
-        attn: Attentions = Attentions.ID(),
+        act="relu",
+        norm="bn2d",
+        attn="noop",
     ):
         super().__init__()
-        if out_channels is None:
-            out_channels = in_channels
-
-        self.block = nn.Sequential(
+        out_channels = out_channels or in_channels
+        layers = [
             ConvLayer(
                 in_channels,
                 out_channels,
                 stride=stride,
                 kernel_size=3,
-                padding=1,
-                activation=activation,
+                act=act,
+                norm=norm,
             ),
             ConvLayer(
                 out_channels,
                 out_channels,
-                activation=Activations.ID(),
+                act="noop",
+                norm="noop",
             ),
+            Attentions.get(attn, out_channels),
+        ]
+
+        self.block = nn.Sequential(
+            ScaledResidual(
+                *layers,
+                shortcut=ShortcutLayer(in_channels, out_channels, stride),
+            ),
+            Acts.get(act),
         )
-        self.shortcut = ShortcutLayer(in_channels, out_channels, stride)
-        self.activation = activation.create()
-        self.attn_block = attn.create(in_channels=out_channels)
 
     def forward(self, x):
-        skip_out = self.shortcut(x)
-        return self.activation(
-            self.attn_block(self.block(x)) + skip_out,
-        )
+        return self.block(x)
 
 
 class ResNeXtBlock(nn.Module):
@@ -81,32 +167,40 @@ class ResNeXtBlock(nn.Module):
         red_channels,
         out_channels=None,
         groups=1,
+        kernel_size=3,
         stride=1,
-        activation=Activations.RELU(inplace=True),
-        attn: Attentions = Attentions.ID(),
+        act="relu",
+        norm="bn2d",
+        attn="noop",
     ):
         super().__init__()
-        if out_channels is None:
-            out_channels = in_channels
+        out_channels = out_channels or in_channels
 
-        self.block = BottleneckLayer(
-            in_channels,
-            red_channels,
-            out_channels,
-            groups=groups,
-            stride=stride,
-            activation=activation,
-            last_act=False,
+        layers = [
+            BottleneckLayer(
+                in_channels,
+                red_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                groups=groups,
+                stride=stride,
+                act=act,
+                norm=norm,
+                last_act=False,
+            ),
+            Attentions.get(attn, out_channels),
+        ]
+
+        self.block = nn.Sequential(
+            ScaledResidual(
+                *layers,
+                shortcut=ShortcutLayer(in_channels, out_channels, stride),
+            ),
+            Acts.get(act),
         )
-        self.shortcut = ShortcutLayer(in_channels, out_channels, stride)
-        self.activation = activation.create()
-        self.attn_block = attn.create(in_channels=out_channels)
 
     def forward(self, x):
-        skip_out = self.shortcut(x)
-        return self.activation(
-            self.attn_block(self.block(x)) + skip_out,
-        )
+        return self.block(x)
 
 
 class ConvMixerBlock(nn.Module):
@@ -116,25 +210,29 @@ class ConvMixerBlock(nn.Module):
         kernel_size=7,
         stride=1,
         padding="same",
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
-        self.dw_conv = ConvLayer(
-            in_channels,
-            in_channels,
-            kernel_size,
-            groups=in_channels,
-            activation=activation,
+        self.block = nn.Sequential(
+            ScaledResidual(
+                ConvLayer(
+                    in_channels,
+                    in_channels,
+                    kernel_size,
+                    groups=in_channels,
+                    act=act,
+                ),
+                ShortcutLayer(in_channels, in_channels, stride),
+            ),
+            Conv1x1Layer(
+                in_channels,
+                in_channels,
+                act=act,
+            ),
         )
-        self.pw_conv = Conv1x1Layer(
-            in_channels,
-            in_channels,
-            activation=activation,
-        )
-        self.shortcut = ShortcutLayer(in_channels, in_channels, stride)
 
     def forward(self, x):
-        return self.pw_conv(self.shortcut(x) + self.dw_conv(x))
+        return self.block(x)
 
 
 class MLPTokenMixerBlock(nn.Module):
@@ -144,28 +242,32 @@ class MLPTokenMixerBlock(nn.Module):
         num_patches,
         expansion=4,
         dropout=0.0,
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
-        # [n, (h*w), c]
-        self.block = nn.Sequential(
-            nn.LayerNorm(in_channels),
+        self.block = ScaledResidual(
+            FlattenLayer(
+                norm_dims=in_channels,
+                norm="ln",
+                norm_order="pre",
+            ),
             Rearrange("n p c -> n c p"),
             ExpansionFCLayer(
                 num_patches,
                 expansion,
-                activation=activation,
+                act=act,
                 dropout=dropout,
-                bn=False,
+                norm="noop",
             ),
             Rearrange("n c p -> n p c"),
         )
 
     def forward(self, x):
-        _, _, h, w = x.shape
-        x = rearrange(x, "n c h w -> n (h w) c")
-        x = x + self.block(x)
-        return rearrange(x, "n (h w) c -> n c h w", h=h, w=w)
+        return rearrange(
+            self.block(x),
+            "n (h w) c -> n c h w",
+            w=x.shape[-1],
+        )
 
 
 class ConvTokenMixerBlock(nn.Module):
@@ -175,24 +277,28 @@ class ConvTokenMixerBlock(nn.Module):
         num_patches,
         expansion=4,
         dropout=0.0,
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
-        # [n, (h*w), c]
-        self.block = nn.Sequential(
-            nn.LayerNorm(in_channels),
+        self.block = ScaledResidual(
+            FlattenLayer(
+                norm_dims=in_channels,
+                norm="ln",
+                norm_order="pre",
+            ),
             nn.Conv1d(num_patches, int(num_patches * expansion), 1),
             nn.Dropout(dropout),
             nn.Conv1d(int(num_patches * expansion), num_patches, 1),
             nn.Dropout(dropout),
-            activation.create(),
+            Acts.get(act),
         )
 
     def forward(self, x):
-        _, _, h, w = x.shape
-        x = rearrange(x, "n c h w -> n (h w) c")
-        x = x + self.block(x)
-        return rearrange(x, "n (h w) c -> n c h w", h=h, w=w)
+        return rearrange(
+            self.block(x),
+            "n (h w) c -> n c h w",
+            w=x.shape[-1],
+        )
 
 
 class MLPDimMixerBlock(nn.Module):
@@ -203,7 +309,7 @@ class MLPDimMixerBlock(nn.Module):
         dim=-1,
         expansion=4,
         dropout=0.0,
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
         self.norm = nn.LayerNorm(norm_channels)
@@ -211,10 +317,9 @@ class MLPDimMixerBlock(nn.Module):
         self.block = ExpansionFCLayer(
             mixing_channels,
             expansion,
-            mixing_channels,
-            activation,
-            dropout,
-            bn=False,
+            act=act,
+            dropout=dropout,
+            norm="noop",
         )
 
     def forward(self, x):
@@ -230,30 +335,32 @@ class MLPChannelMixerBlock(nn.Module):
     def __init__(
         self,
         in_channels,
-        num_patches,
         expansion=0.5,
         dropout=0.0,
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
-        # [n, (h*w), c]
-        self.block = nn.Sequential(
-            nn.LayerNorm(in_channels),
+        self.block = ScaledResidual(
+            FlattenLayer(
+                norm_dims=in_channels,
+                norm="ln",
+                norm_order="pre",
+            ),
             ExpansionFCLayer(
                 in_channels,
                 expansion,
-                in_channels,
-                activation,
-                dropout,
-                bn=False,
+                act=act,
+                dropout=dropout,
+                norm="noop",
             ),
         )
 
     def forward(self, x):
-        _, _, h, w = x.shape
-        x = rearrange(x, "n c h w -> n (h w) c")
-        x = x + self.block(x)
-        return rearrange(x, "n (h w) c -> n c h w", h=h, w=w)
+        return rearrange(
+            self.block(x),
+            "n (h w) c -> n c h w",
+            w=x.shape[-1],
+        )
 
 
 class MLPMixerBlock(nn.Module):
@@ -261,10 +368,10 @@ class MLPMixerBlock(nn.Module):
         self,
         in_channels,
         num_patches,
-        tm_expansion=8,
+        tm_expansion=4,
         cm_expansion=0.5,
         dropout=0.0,
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
         self.num_patches = num_patches
@@ -273,14 +380,13 @@ class MLPMixerBlock(nn.Module):
             num_patches,
             tm_expansion,
             dropout=dropout,
-            activation=activation,
+            act=act,
         )
         self.channel_mixer = MLPChannelMixerBlock(
             in_channels,
-            num_patches,
             cm_expansion,
             dropout=dropout,
-            activation=activation,
+            act=act,
         )
 
     def forward(self, x):
@@ -296,7 +402,7 @@ class MDMLPMixerBlock(nn.Module):
         patch_num_w,
         expansion=4,
         dropout=0.0,
-        activation=Activations.GELU(),
+        act="gelu",
     ):
         super().__init__()
         self.num_patches_h = patch_num_h
@@ -316,7 +422,7 @@ class MDMLPMixerBlock(nn.Module):
                     dim=l_dims[i],
                     expansion=expansion,
                     dropout=dropout,
-                    activation=activation,
+                    activation=act,
                 )
                 for i in range(len(l_dims))
             ],
@@ -341,7 +447,7 @@ class InceptionBlock(nn.Module):
         l_red_channels,
         l_out_channels,
         l_kernel_sizes,
-        activation=Activations.RELU(inplace=True),
+        act="relu",
         last_conv1x1=False,
     ):
         """
@@ -366,7 +472,7 @@ class InceptionBlock(nn.Module):
                     Conv1x1Layer(
                         in_channels,
                         out,
-                        activation=activation,
+                        act=act,
                     )
                 )
                 branch = nn.Sequential(*layers)
@@ -378,10 +484,9 @@ class InceptionBlock(nn.Module):
                     kernel_size,
                     padding="same",
                     last_conv1x1=last_conv1x1,
-                    activation=activation,
+                    act=act,
                 )
             self.branches.append(branch)
 
     def forward(self, x):
         return torch.cat([branch(x) for branch in self.branches], dim=1)
-

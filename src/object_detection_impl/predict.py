@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import hydra
 import lightning as L
@@ -16,7 +15,6 @@ log = structlog.get_logger()
 def _predict(
     model: L.LightningModule,
     dm: L.LightningDataModule,
-    postprocessor: Any,
     cfg: DictConfig,
 ):
     dm.prepare_data()
@@ -27,8 +25,7 @@ def _predict(
     with torch.no_grad():
         for idx, inputs in enumerate(dl):
             outputs = model.predict_step(inputs, idx)
-            # postprocess outputs
-            yield postprocessor(inputs, outputs, dl, cfg)
+            yield dm.visualize_batch(inputs, outputs)
 
 
 def _run(cfg: DictConfig) -> None:
@@ -44,8 +41,7 @@ def _run(cfg: DictConfig) -> None:
     )
 
     dm = load_obj(cfg.datamodule.class_name)(cfg=cfg)
-    postprocessor = load_obj(cfg.predict.postprocessor.func_name)
-    return _predict(model, dm, postprocessor, cfg)
+    return _predict(model, dm, cfg)
 
 
 @hydra.main(

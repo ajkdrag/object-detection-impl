@@ -1,10 +1,11 @@
-class_name: models.nets.t2t.T2TViT
+class_name: models.nets.vit.ViTTiny
 input_size: 32 
 stem:
-  class_name: models.stems.patch.T2TPatch
+  class_name: models.stems.patch.T2TPatchV2
   params:
     kernel_sizes: [3, 3, 3]
-    strides: [2, 2, 2]
+    strides: [1, 1, 2]
+    image_h: ${model.input_size}
 neck:
   class_name: models.necks.patch.SequencePooling
 head:
@@ -12,5 +13,3 @@ head:
   params:
     layer_units: 
       - ${datamodule.dataset.n_classes}
-    activations: ["id"]
-    dropout_rates: [0.0]

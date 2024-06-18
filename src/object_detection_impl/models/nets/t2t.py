@@ -176,18 +176,18 @@ class T2TViT(nn.Sequential):
     def __init__(
         self,
         cfg,
-        strides=[1, 1, 2],
+        strides=[2, 2, 2],
         token_dim=64,
         dim=128,
         head_dim=64,
-        heads=2,
+        heads=4,
         backbone_depth=8,
         mlp_mult=2,
         in_channels=3,
         image_size=32,
         classes=10,
-        trans_p_drop=0.0,
-        head_p_drop=0.0,
+        trans_p_drop=0.2,
+        head_p_drop=0.2,
     ):
         reduced_size = image_size // np.prod(strides)
         super().__init__(

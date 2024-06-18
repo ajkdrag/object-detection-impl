@@ -11,7 +11,7 @@ defaults:
   - datamodule: cifar10
   - augmentation: ${datamodule}_v2
   - training: default
-  - predict: tv_clf
+  - predict: default
   - model: vit
   - optimizer: adamw
   - scheduler: onecycle

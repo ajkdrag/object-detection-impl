@@ -3,4 +3,3 @@ vis_dls:
   params:
     num_samples: 8
     dirpath: dls
-    scale: 4

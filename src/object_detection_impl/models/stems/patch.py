@@ -1,14 +1,65 @@
 import torch.nn as nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
-from object_detection_impl.models.blocks.activations import Activations
-from object_detection_impl.models.blocks.attentions import MultiHead_SA
+from object_detection_impl.models.blocks.composites import (
+    T2TBlock,
+)
 from object_detection_impl.models.blocks.core import (
     BasicFCLayer,
     ConvLayer,
+    SoftSplit,
     UnflattenLayer,
 )
 from object_detection_impl.models.stems.base import BaseStem
+
+
+class T2TPatchV2(BaseStem):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_sizes,
+        strides,
+        image_h,
+        expansion=0.5,
+        act="gelu",
+        dropout=0.0,
+        **kwargs,
+    ):
+        super().__init__()
+        layers = []
+        last = len(strides) - 1
+        inter_channels = int(expansion * out_channels)
+
+        for i, (k_sz, stride) in enumerate(zip(kernel_sizes, strides)):
+            layers.extend(
+                [
+                    SoftSplit(
+                        in_channels,
+                        out_channels if i == last else inter_channels,
+                        k_sz,
+                        stride,
+                    )
+                    if i == 0
+                    else T2TBlock(
+                        inter_channels,
+                        out_channels if i == last else inter_channels,
+                        image_h,
+                        kernel_size=k_sz,
+                        stride=stride,
+                        num_heads=kwargs.get("mha_heads", 1),
+                        expansion=kwargs.get("mha_expansion", 1),
+                        act=act,
+                        dropout=dropout,
+                    ),
+                ]
+            )
+            image_h //= stride
+        layers.append(UnflattenLayer(h=image_h))
+        self.block = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.block(x)
 
 
 class T2TPatch(BaseStem):
@@ -18,40 +69,41 @@ class T2TPatch(BaseStem):
         out_channels,
         kernel_sizes,
         strides,
-        activation=Activations.GELU(),
+        image_h,
+        act="gelu",
+        dropout=0.0,
         **kwargs,
     ):
         super().__init__()
         layers = []
         last = len(strides) - 1
+        inter_channels = in_channels
         for i, (k_sz, stride) in enumerate(zip(kernel_sizes, strides)):
-            in_channels *= k_sz**2
+            inter_channels *= k_sz**2
             layers.extend(
                 [
-                    UnflattenLayer(),
-                    nn.Unfold(k_sz, stride=stride, padding=(k_sz - 1) // 2),
-                    Rearrange("n c p -> n p c"),
-                    MultiHead_SA(
+                    SoftSplit(
                         in_channels,
-                        num_heads=1,
-                        expansion=1,
+                        out_channels if i == last else inter_channels,
+                        k_sz,
+                        stride,
                     )
-                    if i != last
-                    else nn.Identity(),
+                    if i == 0
+                    else T2TBlock(
+                        inter_channels,
+                        out_channels if i == last else None,
+                        image_h,
+                        kernel_size=k_sz,
+                        stride=stride,
+                        num_heads=kwargs.get("mha_heads", 1),
+                        expansion=kwargs.get("mha_expansion", 1),
+                        act=act,
+                        dropout=dropout,
+                    ),
                 ]
             )
-        layers.append(
-            nn.Sequential(
-                BasicFCLayer(
-                    in_channels,
-                    out_channels,
-                    bn=False,
-                    activation=activation,
-                    flatten=False,
-                ),
-                UnflattenLayer(),
-            )
-        )
+            image_h //= stride
+        layers.append(UnflattenLayer(h=image_h))
         self.block = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -65,8 +117,9 @@ class MDMLPPatch(BaseStem):
         out_channels,
         kernel_size,
         stride,
-        activation=Activations.ID(),
-        bn=False,
+        act="noop",
+        norm="noop",
+        dropout=0.0,
         **kwargs,
     ):
         super().__init__()
@@ -82,10 +135,10 @@ class MDMLPPatch(BaseStem):
             BasicFCLayer(
                 kernel_size**2,
                 out_channels,
-                activation,
-                dropout=0.0,
-                bn=bn,
-                flatten=False,
+                dropout=dropout,
+                act=act,
+                norm=norm,
+                norm_order="post",
             ),
         )
 
@@ -102,8 +155,8 @@ class ConvPatch(BaseStem):
         stride,
         n_layers=2,
         expansion=0.5,
-        activation=Activations.ID(),
-        bn=False,
+        act="noop",
+        norm="noop",
         padding=0,
         mp=True,
         **kwargs,
@@ -120,8 +173,8 @@ class ConvPatch(BaseStem):
                         out_channels if i == n_layers - 1 else inter_channels,
                         kernel_size=kernel_size,
                         stride=stride,
-                        activation=activation,
-                        bn=bn,
+                        act=act,
+                        norm=norm,
                         padding=padding,
                     ),
                     nn.MaxPool2d(
@@ -148,8 +201,9 @@ class FCPatch(BaseStem):
         kernel_size,
         stride,
         input_size,
-        activation=Activations.ID(),
-        bn=False,
+        dropout=0.0,
+        act="noop",
+        norm="noop",
         **kwargs,
     ):
         super().__init__()
@@ -161,10 +215,10 @@ class FCPatch(BaseStem):
             BasicFCLayer(
                 kernel_size**2 * in_channels,
                 out_channels,
-                activation,
-                dropout=0.0,
-                bn=bn,
-                flatten=False,
+                act=act,
+                dropout=dropout,
+                norm=norm,
+                norm_order="post",
             ),
         )
 

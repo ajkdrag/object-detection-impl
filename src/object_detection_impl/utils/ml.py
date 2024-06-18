@@ -34,7 +34,10 @@ def swap_dims(x, d1, d2):
 
 
 def init_linear(m):
-    if isinstance(m, (nn.Conv2d, nn.Linear)):
-        nn.init.kaiming_normal_(m.weight)
+    if isinstance(m, (nn.Linear, nn.Conv2d)):
+        nn.init.xavier_normal_(m.weight)
         if m.bias is not None:
             nn.init.zeros_(m.bias)
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.constant_(m.weight, 1.0)
+        nn.init.zeros_(m.bias)

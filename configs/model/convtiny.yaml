@@ -1,0 +1,9 @@
+class_name: models.nets.convtiny.ConvTiny
+input_size: 32 
+neck:
+  class_name: models.necks.conv.AvgPool
+head:
+  class_name: models.heads.fc.FullyConnectedHead
+  params:
+    layer_units: 
+      - ${datamodule.dataset.n_classes}

@@ -1,8 +1,10 @@
 import lightning as L
+import numpy as np
 import structlog
 import torch
 from object_detection_impl.augs.albumentations_aug import load_augs
 from object_detection_impl.utils.registry import load_obj
+from object_detection_impl.utils.vis import draw_labels_on_images
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, random_split
 from torch.utils.data._utils.collate import default_collate
@@ -17,9 +19,9 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
         self.path = cfg.datamodule.path
         self.name = cfg.datamodule.dataset.name
         self.splits = cfg.datamodule.splits
-        self.dataset_cls = load_obj(self.cfg.datamodule.dataset.class_name)
-        self.train_augs = load_augs(self.cfg.augmentation.train)
-        self.val_augs = load_augs(self.cfg.augmentation.val)
+        self.dataset_cls = load_obj(cfg.datamodule.dataset.class_name)
+        self.train_augs = load_augs(cfg.augmentation.train)
+        self.val_augs = load_augs(cfg.augmentation.val)
         self.train_collate_fn = self.get_collate_fn(self.train_augs)
         self.val_collate_fn = self.get_collate_fn(self.val_augs)
 
@@ -76,13 +78,15 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
                 )
             log.info(f"train_dataset size: {len(self.train_dataset)}")
             log.info(f"val_dataset size: {len(self.val_dataset)}")
+            self.classes = ds_full.classes
 
-        if stage in ["test", "predict"] or stage is None:
+        if stage in ["fit", "test", "predict"] or stage is None:
             self.test_dataset = self.dataset_cls(
                 self.name,
                 root=self.path,
                 train=False,
             )
+            self.classes = self.test_dataset.classes
 
     def train_dataloader(self):
         return DataLoader(
@@ -91,13 +95,13 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
             num_workers=self.cfg.datamodule.num_workers,
             pin_memory=self.cfg.datamodule.pin_memory,
             collate_fn=self.train_collate_fn,
-            shuffle=False,
+            shuffle=True,
             drop_last=True,
         )
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_dataset,
+            self.test_dataset,
             batch_size=self.cfg.datamodule.batch_size,
             num_workers=self.cfg.datamodule.num_workers,
             pin_memory=self.cfg.datamodule.pin_memory,
@@ -128,7 +132,19 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
             drop_last=False,
         )
 
-    def visualize_batch(self, batch, num_samples=8):
-        images = batch["image"]
-        indices = torch.randint(0, len(images), (num_samples,))
-        return images[indices]
+    def visualize_batch(self, inputs, outputs=None, num_samples=8):
+        if outputs is None:
+            outputs = inputs["target"]
+            inputs = inputs["image"]
+        outputs_resolved = np.array(self.classes)[outputs.detach().cpu()]
+
+        std = torch.tensor(self.cfg.datamodule.dataset.std).view(3, 1, 1)
+        mean = torch.tensor(self.cfg.datamodule.dataset.mean).view(3, 1, 1)
+        images = inputs * std + mean
+
+        return draw_labels_on_images(
+            images[:num_samples],
+            outputs_resolved[:num_samples],
+            20,
+            size=120,
+        )

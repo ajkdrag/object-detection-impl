@@ -2,8 +2,8 @@ import torch.nn as nn
 from einops.layers.torch import Rearrange
 from object_detection_impl.models.blocks.attentions import (
     LearnablePositionEnc,
-    MultiHead_SA,
 )
+from object_detection_impl.models.blocks.composites import TransformerEncoder
 from object_detection_impl.utils.ml import init_linear
 from object_detection_impl.utils.registry import load_obj
 from omegaconf import DictConfig
@@ -12,8 +12,8 @@ from omegaconf import DictConfig
 class ViTTiny(nn.Module):
     def __init__(self, config: DictConfig) -> None:
         super().__init__()
-        n_layers = 8
-        embed_sz = 64
+        n_layers = 4
+        embed_sz = 128
         heads = 2
         c = 3
         h = w = config.model.input_size
@@ -30,10 +30,11 @@ class ViTTiny(nn.Module):
             Rearrange("n d h w -> n (h w) d"),
             LearnablePositionEnc(sizes=(stem_h * stem_w, embed_sz)),
             *[
-                MultiHead_SA(
+                TransformerEncoder(
                     embed_sz,
                     num_heads=heads,
                     expansion=1,
+                    dropout=0.2,
                 )
                 for _ in range(n_layers)
             ],
@@ -45,7 +46,7 @@ class ViTTiny(nn.Module):
         )
 
         self.head = load_obj(config.model.head.class_name)(
-            in_features=embed_sz,
+            in_channels=embed_sz,
             **config.model.head.params,
         )
 
