@@ -1,8 +1,8 @@
 train:
   - class_name: albumentations.RandomResizedCrop
     params:
-      height: ${model.input_size}
-      width: ${model.input_size}
+      height: ${model.ip.h}
+      width: ${model.ip.w}
       scale: [0.75, 1]
       ratio: [0.75, 1.2]
       p: 0.5
@@ -14,6 +14,8 @@ train:
       shift_limit: 0.2
       scale_limit: 0.1
       rotate_limit: 20
+      border_mode: 0 # constant
+      value: 127
       p: 0.5
   - class_name: albumentations.ColorJitter
     params:

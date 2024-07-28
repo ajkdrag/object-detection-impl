@@ -1,0 +1,9 @@
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, ConvMpPatch, [3, 32, 3, 1]] # [n, 32, 16, 16]
+  t2: [s1, 1, GhostBottleneckBlock, [32, 64, {f: 2, k: 5, s: 2}]] # [n, 64, 8, 8] 
+  t6: [t2, 1, GhostBottleneckBlock, [64, 128, {f: 2, k: 3, s: 1}]] # [n, 128, 4, 4] 
+  t7: [t6, 6, GhostBottleneckBlock, [128, 128, {f: 2, k: 2, s: 1, attn: se}]] # [n, 128, 4, 4] 
+  n1: [t7, 1, AvgPool, [128, 512, {flatten: false}]] # [n, 64]
+  h1: [n1, 1, ConvHead, [512, ["${datamodule.dataset.n_classes}"]]] # [n, 10]

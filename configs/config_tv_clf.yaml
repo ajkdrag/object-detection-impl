@@ -4,15 +4,16 @@ general:
   workspace: ajkdrag
   project_name: od-impl
   device: cuda
+  model_name: ${hydra.runtime.choices.model}
   exp_name: ${datamodule.dataset.name}
 
 defaults:
   - _self_
   - datamodule: cifar10
-  - augmentation: ${datamodule}_v2
+  - augmentation: ${datamodule}
   - training: default
   - predict: default
-  - model: vit
+  - model: mobilenet
   - optimizer: adamw
   - scheduler: onecycle
   - loss: cross_entropy

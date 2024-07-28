@@ -1,74 +1,105 @@
 import math
-from enum import Enum
 from typing import Literal
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from einops import rearrange
-from object_detection_impl.models.blocks.core import (
+from einops.layers.torch import Rearrange
+
+from .layers import (
     BasicFCLayer,
     Conv1x1Layer,
     ConvLayer,
-    FlattenLayer,
 )
 
 
-class LearnablePositionEnc(nn.Module):
-    def __init__(self, sizes):
+class MultiScaleSAV2(nn.Module):
+    def __init__(
+        self,
+        c1,
+        h,
+        k_q=1,
+        k_kv=1,
+        s_q=1,
+        s_kv=1,
+        heads=2,
+        drop=0.0,
+        **kwargs,
+    ):
         super().__init__()
-        self.pos_enc = nn.Parameter(torch.zeros(1, *sizes))
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Parameter):
-            nn.init.trunc_normal_(m, std=0.2)
+        self.heads = heads
+        self.h = h
+        self.drop = drop
+        self.pool_q = nn.Sequential(
+            nn.MaxPool2d(k_q, s_q, (k_q - 1) //
+                         2) if k_q > 1 else nn.Identity(),
+            Rearrange("n c h w -> n (h w) c"),
+        )
+        self.pool_kv = nn.Sequential(
+            nn.MaxPool2d(k_kv, s_kv, (k_kv - 1) //
+                         2) if k_kv > 1 else nn.Identity(),
+            Rearrange("n c h w -> n (h w) c"),
+        )
+        self.qkv = nn.Sequential(
+            nn.Linear(
+                c1,
+                c1 * 3,
+                bias=kwargs.get("qkv_bias", False),
+            ),
+            Rearrange(
+                "n (h w) (a m d) -> a (n m) d h w",
+                m=heads,
+                a=3,
+                h=h,
+            ),
+        )
 
     def forward(self, x):
-        return x + self.pos_enc
+        n, p, c = x.shape
+        q, k, v = self.qkv(x)  # [n*m, c', h, w]
+        q = self.pool_q(q)  # [n*m, (h'*w'), c']
+        k = self.pool_kv(k)  # [n*m, (h''*w''), c']
+        v = self.pool_kv(v)  # [n*m, (h''*w''), c']
+        out = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            dropout_p=self.drop,
+        )  # [n*m, (h'*w'), c']
+        return rearrange(out, "(n m) p d -> n p (m d)", m=self.num_heads)
 
 
 class MultiHeadSA(nn.Module):
     def __init__(
         self,
-        in_channels,
-        num_heads=2,
-        dropout=0.0,
-        batch_first=True,
-        norm="ln",
-        norm_dims=None,
+        c1,
+        heads=2,
+        drop=0.0,
         **kwargs,
     ):
         super().__init__()
-        self.stem = FlattenLayer(
-            norm_dims=norm_dims or in_channels,
-            norm=norm,
-            norm_order="pre",
-        )
         self.mha = nn.MultiheadAttention(
-            in_channels,
-            num_heads,
-            dropout=dropout,
-            batch_first=batch_first,
+            c1,
+            heads,
+            dropout=drop,
+            batch_first=True,
             **kwargs,
         )
 
     def forward(self, x):
-        out = self.stem(x)
-        out = self.mha(out, out, out)[0]  # [n, p, c]
-        if len(x.shape) == 4:
-            return rearrange(out, "n (h w) c -> n c h w", w=x.shape[-1])
-        return out
+        return self.mha(x, x, x)[0]  # [n, p, c]
 
 
 class ECABlockV2(nn.Module):
-    def __init__(self, in_channels, gamma=2, bias=1):
+    def __init__(self, c1, gamma=2, bias=1):
         super().__init__()
-        k_size = int(abs(math.log(in_channels, 2) + bias) / gamma)
-        k_size = k_size if k_size % 2 else k_size + 1
+        k = int(abs(math.log(c1, 2) + bias) / gamma)
+        k = k if k % 2 else k + 1
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.block = nn.Conv1d(2, 1, k_size, padding="same")
+        self.block = nn.Conv1d(2, 1, k, padding="same")
         self.act = nn.Sigmoid()
 
     def forward(self, x):
@@ -80,13 +111,13 @@ class ECABlockV2(nn.Module):
 
 
 class ECABlock(nn.Module):
-    def __init__(self, in_channels, gamma=2, bias=1):
+    def __init__(self, c1, gamma=2, bias=1):
         super().__init__()
-        k_size = int(abs(math.log(in_channels, 2) + bias) / gamma)
-        k_size = k_size if k_size % 2 else k_size + 1
+        k = int(abs(math.log(c1, 2) + bias) / gamma)
+        k = k if k % 2 else k + 1
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.block = nn.Conv1d(1, 1, k_size, padding="same")
+        self.block = nn.Conv1d(1, 1, k, padding="same")
         self.act = nn.Sigmoid()
 
     def forward(self, x):
@@ -97,27 +128,22 @@ class ECABlock(nn.Module):
 
 
 class ChannelAttentionBlock(nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        reduction_rate=0.8,
-        use_conv1x1=True,
-    ):
+    def __init__(self, c1, f=0.8, use_conv=True):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
 
-        block_cls = Conv1x1Layer if use_conv1x1 else BasicFCLayer
+        block_cls = Conv1x1Layer if use_conv else BasicFCLayer
         self.block = nn.Sequential(
             block_cls(
-                in_channels,
-                math.ceil(reduction_rate * in_channels),
+                c1,
+                math.ceil(f * c1),
                 act="relu",
                 norm="noop",
             ),
             block_cls(
-                math.ceil(reduction_rate * in_channels),
-                in_channels,
+                math.ceil(f * c1),
+                c1,
                 act="noop",
                 norm="noop",
             ),
@@ -133,12 +159,7 @@ class ChannelAttentionBlock(nn.Module):
 class SpatialAttentionBlock(nn.Module):
     def __init__(self):
         super().__init__()
-        self.block = ConvLayer(
-            2,
-            1,
-            act="sigmoid",
-            norm="noop",
-        )
+        self.block = ConvLayer(2, 1, act="sigmoid", norm="noop")
 
     def forward(self, x):
         avg_out = torch.mean(x, dim=1, keepdim=True)
@@ -147,29 +168,14 @@ class SpatialAttentionBlock(nn.Module):
 
 
 class SEBlock(nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        reduction_rate: float = 0.8,
-        use_conv1x1=True,
-    ):
+    def __init__(self, c1, f=0.25, use_conv=True):
         super().__init__()
         self.pool = nn.AdaptiveAvgPool2d(1)
 
-        block_cls = Conv1x1Layer if use_conv1x1 else BasicFCLayer
+        block_cls = Conv1x1Layer if use_conv else BasicFCLayer
         self.block = nn.Sequential(
-            block_cls(
-                in_channels,
-                math.ceil(reduction_rate * in_channels),
-                act="relu",
-                norm="noop",
-            ),
-            block_cls(
-                math.ceil(reduction_rate * in_channels),
-                in_channels,
-                act="sigmoid",
-                norm="noop",
-            ),
+            block_cls(c1, math.ceil(f * c1), act="relu", norm="noop"),
+            block_cls(math.ceil(f * c1), c1, act="hsigmoid", norm="noop"),
         )
 
     def forward(self, x):
@@ -181,19 +187,19 @@ class SEBlock(nn.Module):
 class CBAMBlock(nn.Module):
     def __init__(
         self,
-        in_channels,
+        c1,
         ca: Literal["eca", "ecav2", "cbam", "se"] = "eca",
         **ca_kwargs,
     ):
         super().__init__()
         if ca == "eca":
-            self.ca = ECABlock(in_channels, **ca_kwargs)
+            self.ca = ECABlock(c1, **ca_kwargs)
         elif ca == "ecav2":
-            self.ca = ECABlockV2(in_channels, **ca_kwargs)
+            self.ca = ECABlockV2(c1, **ca_kwargs)
         elif ca == "cbam":
-            self.ca = ChannelAttentionBlock(in_channels, **ca_kwargs)
+            self.ca = ChannelAttentionBlock(c1, **ca_kwargs)
         elif ca == "se":
-            self.ca = SEBlock(in_channels, **ca_kwargs)
+            self.ca = SEBlock(c1, **ca_kwargs)
         else:
             raise ValueError(f"unknown channel attn type: {ca}")
 
@@ -202,22 +208,3 @@ class CBAMBlock(nn.Module):
     def forward(self, x):
         x = self.ca(x)
         return self.sa(x)
-
-
-class Attentions(Enum):
-    CA = ChannelAttentionBlock
-    CBAM = CBAMBlock
-    ECA = ECABlock
-    ECAV2 = ECABlockV2
-    SE = SEBlock
-    ID = nn.Identity
-
-    def __call__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-        return self
-
-    def create(self, **kwargs):
-        local_kwargs = self.kwargs.copy()
-        local_kwargs.update(kwargs)
-        return self.value(*self.args, **local_kwargs)

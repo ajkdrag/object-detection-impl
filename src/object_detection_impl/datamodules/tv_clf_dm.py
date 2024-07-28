@@ -57,15 +57,18 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
-            ds_full = self.dataset_cls(
+            self.train_dataset = self.dataset_cls(
                 self.name,
                 root=self.path,
                 train=True,
             )
-            self.train_dataset, self.val_dataset = random_split(
-                ds_full,
-                self.splits,
+
+            self.val_dataset = self.dataset_cls(
+                self.name,
+                root=self.path,
+                train=False,
             )
+            self.classes = self.train_dataset.classes
 
             if self.cfg.training.debug:
                 self.train_dataset, _ = random_split(
@@ -78,7 +81,6 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
                 )
             log.info(f"train_dataset size: {len(self.train_dataset)}")
             log.info(f"val_dataset size: {len(self.val_dataset)}")
-            self.classes = ds_full.classes
 
         if stage in ["fit", "test", "predict"] or stage is None:
             self.test_dataset = self.dataset_cls(
@@ -101,7 +103,7 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.test_dataset,
+            self.val_dataset,
             batch_size=self.cfg.datamodule.batch_size,
             num_workers=self.cfg.datamodule.num_workers,
             pin_memory=self.cfg.datamodule.pin_memory,
@@ -140,7 +142,7 @@ class TorchvisionClfDatamodule(L.LightningDataModule):
 
         std = torch.tensor(self.cfg.datamodule.dataset.std).view(3, 1, 1)
         mean = torch.tensor(self.cfg.datamodule.dataset.mean).view(3, 1, 1)
-        images = inputs * std + mean
+        images = inputs.detach().cpu() * std + mean
 
         return draw_labels_on_images(
             images[:num_samples],

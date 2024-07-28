@@ -1,0 +1,11 @@
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, ConvMpPatch, [3, 32, 3, 1]] # [n, 32, 16, 16]
+  s2: [s1, 1, ConvMpPatch, [32, 64, 3, 1]] # [n , 64, 8, 8]
+  s3: [s2, 1, ConvMpPatch, [64, 128, 3, 1]] # [n , 128, 4, 4]
+  t1: [s3, 1, FlattenLayer, []] # [n, 16, 128] 
+  t2: [t1, 1, LearnablePositionEnc, [[16, 128]]] # [n, 16, 128] 
+  t3: [t2, 2, TransformerEncoder, [128, 2, 2, 0.1]] # [n, 16, 128] 
+  n1: [t3, 1, SequencePooling, [128]] # [n, 128]
+  h1: [n1, 1, FCHead, [128, ["${datamodule.dataset.n_classes}"]]] # [n, 10]

@@ -1,0 +1,9 @@
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, SoftSplit, [3, 64, 4, 2]] # [n, 16*16, 64]
+  s2: [s1, 1, T2TBlock, [64, 64, 16, 3, 1]] # [n, 16*16, 64]
+  s3: [s2, 1, T2TBlock, [64, 64, 16, 3, 2]] # [n, 8*8, 64]
+  t1: [s3, 8, TransformerEncoder, [64, 2, 2, 0.3]] # [n, 64, 64]
+  n1: [t1, 1, SequencePooling, [64]] # [n, 64]
+  h1: [n1, 1, FCHead, [64, ["${datamodule.dataset.n_classes}"]]] # [n, 10]

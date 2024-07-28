@@ -1,0 +1,11 @@
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, SoftSplit, [3, 64, 4, 2]] # [n, 16*16, 64]
+  t1: [s1, 2, TransformerEncoderMultiScale, [64, 16, 64, 1, 2, 1, 2]] # [n, 16*16, 64]
+  t2: [t1, 1, TransformerEncoderMultiScale, [64, 16, 96, 2, 2, 2, 2]] # [n, 8*8, 96]
+  t3: [t2, 2, TransformerEncoderMultiScale, [96, 8, 96, 1, 2, 1, 2]] # [n, 16*16, 64]
+  t4: [t3, 1, TransformerEncoderMultiScale, [96, 8, 128, 2, 2, 2, 2]] # [n, 4*4, 128]
+  t5: [t4, 2, TransformerEncoderMultiScale, [128, 4, 128, 1, 2, 1, 2]] # [n, 4*4, 128]
+  n1: [t4, 1, SequencePooling, [128]] # [n, 128]
+  h1: [n1, 1, FCHead, [128, ["${datamodule.dataset.n_classes}"]]] # [n, 10]

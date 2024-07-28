@@ -1,7 +1,12 @@
 import lightning as L
+import structlog
+import torch
 import torch.nn as nn
+from lightning.fabric.utilities.throughput import measure_flops
 from object_detection_impl.utils.registry import load_obj
 from omegaconf import DictConfig
+
+log = structlog.get_logger()
 
 
 class LitImageClassifier(L.LightningModule):
@@ -9,6 +14,7 @@ class LitImageClassifier(L.LightningModule):
         super().__init__()
         self.cfg = cfg
         self.model = load_obj(cfg.model.class_name)(cfg)
+        self.model.__class__.__name__ = cfg.general.model_name
         self.loss = load_obj(cfg.loss.class_name)(
             **cfg.loss.get("params", {}),
         )
@@ -23,6 +29,16 @@ class LitImageClassifier(L.LightningModule):
                     ),
                 }
             )
+        self.setup(None)
+
+    def setup(self, stage) -> None:
+        with torch.device("meta"):
+            model = load_obj(self.cfg.model.class_name)(self.cfg)
+            self.flops = measure_flops(
+                model,
+                model.forward_dummy,
+            )
+        log.info(f"TFLOPs: {self.flops / 1e12}")
 
     def forward(self, x, *args, **kwargs):
         return self.model(x)
@@ -31,7 +47,7 @@ class LitImageClassifier(L.LightningModule):
         image = batch["image"]
         if image.device != self.device:
             image = image.to(self.device)
-        return self(image).argmax(dim=-1)
+        return image, self(image).argmax(dim=-1)
 
     def configure_optimizers(self):
         if self.cfg.scheduler.class_name.endswith(("OneCycleLR",)):

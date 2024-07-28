@@ -1,5 +1,10 @@
 import importlib
+from collections import OrderedDict
 from typing import Any
+
+from object_detection_impl.utils.ml import compute_output_shape
+from omegaconf import DictConfig
+from torch import nn
 
 
 def load_obj(obj_path: str, namespace: str = "object_detection_impl") -> Any:
@@ -25,3 +30,51 @@ def load_obj(obj_path: str, namespace: str = "object_detection_impl") -> Any:
         raise AttributeError(
             f"Object `{obj_name}` cannot be loaded from `{obj_path}`.")
     return getattr(module_obj, obj_name)
+
+
+def load_module(cfg):
+    layers = cfg["layers"]
+    c, h, w = (cfg["ip"].get(i) for i in ("c", "h", "w"))
+    input_shape = (c, h, w)
+    custom_modules = "models.blocks"
+
+    module_dict = OrderedDict()
+    for layer_name, layer_config in layers.items():
+        from_layer, num_repeats, block, block_args = layer_config
+
+        if from_layer == "ip":
+            input_shape = (c, h, w)
+        else:
+            input_shape = module_dict[from_layer].output_shape
+
+        if block.startswith("nn."):
+            block_class = getattr(nn, block.split(".", 1)[1])
+        else:
+            try:
+                block_class = load_obj(f"{custom_modules}.{block}")
+            except KeyError:
+                raise ImportError(f"Block '{block}' not found.")
+
+        pos_args = []
+        kwargs = {}
+        for arg in block_args:
+            if isinstance(arg, DictConfig):
+                kwargs.update(arg)
+            else:
+                pos_args.append(arg)
+
+        module = block_class(*pos_args, **kwargs)
+        module.output_shape = compute_output_shape(module, input_shape)
+
+        blocks = [module]
+        for _ in range(num_repeats - 1):
+            module = block_class(*pos_args, **kwargs)
+            module.output_shape = compute_output_shape(module, input_shape)
+            blocks.append(module)
+
+        stage = nn.Sequential(*blocks)
+        stage.output_shape = module.output_shape
+        module_dict[layer_name] = stage
+    model = nn.Sequential(module_dict)
+    model.output_shape = compute_output_shape(model, (c, h, w))
+    return model

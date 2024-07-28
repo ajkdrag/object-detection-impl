@@ -12,7 +12,7 @@ from omegaconf import DictConfig
 class ViTTiny(nn.Module):
     def __init__(self, config: DictConfig) -> None:
         super().__init__()
-        n_layers = 4
+        n_layers = 2
         embed_sz = 128
         heads = 2
         c = 3

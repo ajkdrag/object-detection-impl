@@ -1,8 +1,8 @@
 train:
   - class_name: albumentations.RandomResizedCrop
     params:
-      height: ${model.input_size}
-      width: ${model.input_size}
+      height: ${model.ip.h}
+      width: ${model.ip.w}
       scale: [0.75, 1]
       p: 0.5
   - class_name: albumentations.HorizontalFlip

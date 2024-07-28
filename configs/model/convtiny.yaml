@@ -1,9 +1,10 @@
-class_name: models.nets.convtiny.ConvTiny
-input_size: 32 
-neck:
-  class_name: models.necks.conv.AvgPool
-head:
-  class_name: models.heads.fc.FullyConnectedHead
-  params:
-    layer_units: 
-      - ${datamodule.dataset.n_classes}
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, ConvLayer, [3, 32]]
+  s2: [s1, 1, nn.MaxPool2d, [2, 2]]
+  s3: [s2, 1, ConvLayer, [32, 64]]
+  s4: [s3, 1, nn.MaxPool2d, [2, 2]]
+  t1: [s4, 2, ResNetBlock, [64, 64, 2]]
+  n1: [t1, 1, AvgPool, [64, "noop", "noop", 0.1]]
+  h1: [n1, 1, FCHead, [64, ["${datamodule.dataset.n_classes}"]]]

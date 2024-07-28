@@ -1,14 +1,9 @@
-class_name: models.nets.mlpmixer.MDMLPTiny
-input_size: 32 
-stem:
-  class_name: models.stems.patch.MDMLPPatch
-  params:
-    kernel_size: 4
-    stride: 2
-head:
-  class_name: models.heads.fc.FullyConnectedHead
-  params:
-    layer_units: 
-      - ${datamodule.dataset.n_classes}
-    activations: ["id"]
-    dropout_rates: [0.0]
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, SoftSplit, [3, 32, 4, 2]] # [n, 16*16, 32]
+  s2: [s1, 1, UnflattenLayer, [16]] # [n, 32, 16, 16]
+  s3: [s2, 1, SoftSplit, [32, 256, 4, 2]] # [n, 8*8, 256]
+  t1: [s3, 6, MLPMixerBlock, [256, 64, 0.3]] # [n, 64, 256]
+  n1: [t1, 1, SequencePooling, [256]] # [n, 256]
+  h1: [n1, 1, FCHead, [256, ["${datamodule.dataset.n_classes}"]]] # [n, 10]

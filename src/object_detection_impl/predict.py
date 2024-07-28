@@ -24,8 +24,8 @@ def _predict(
     model.eval()
     with torch.no_grad():
         for idx, inputs in enumerate(dl):
-            outputs = model.predict_step(inputs, idx)
-            yield dm.visualize_batch(inputs, outputs)
+            images, preds = model.predict_step(inputs, idx)
+            yield dm.visualize_batch(images, preds)
 
 
 def _run(cfg: DictConfig) -> None:

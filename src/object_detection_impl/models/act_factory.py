@@ -14,5 +14,9 @@ class Acts:
             return nn.GELU(*args, **kwargs)
         elif act == "sigmoid":
             return nn.Sigmoid(*args, **kwargs)
+        elif act == "hsigmoid":
+            return nn.Hardsigmoid(*args, **kwargs)
+        elif act == "hswish":
+            return nn.Hardswish(*args, **kwargs)
         else:
             raise NotImplementedError

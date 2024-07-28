@@ -1,1 +1,1 @@
-checkpoint: model_checkpoints/epoch=2-valid_accuracy=0.880000.ckpt
+checkpoint: model_checkpoints/epoch=14-valid_accuracy=0.753200.ckpt

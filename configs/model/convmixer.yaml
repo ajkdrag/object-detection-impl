@@ -1,16 +1,10 @@
-class_name: models.nets.convmixer.ConvMixerTiny
-input_size: 32 
-stem:
-  class_name: models.stems.patch.ConvPatch
-  params:
-    kernel_size: 4
-    stride: 4
-neck:
-  class_name: models.necks.patch.PatchNorm
-head:
-  class_name: models.heads.fc.FullyConnectedHead
-  params:
-    layer_units: 
-      - ${datamodule.dataset.n_classes}
-    activations: ["id"]
-    dropout_rates: [0.0]
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, ConvMpPatch, [3, 64, 3, 1]] # [n, 64, 16, 16]
+  s2: [s1, 1, ConvMpPatch, [64, 256, 3, 1]] # [n , 256, 8, 8]
+  t1: [s2, 8, ConvMixerBlock, [256, 5]] # [n, 256, 8, 8] 
+  t2: [t1, 1, FlattenLayer, [256, "ln"]] # [n, 64, 256]
+  # t3: [t2, 1, TransformerEncoder, [256, 2, 2, 0.1]] # [n, 64, 256]
+  n1: [t2, 1, SequencePooling, [256]] # [n, 256]
+  h1: [n1, 1, FCHead, [256, ["${datamodule.dataset.n_classes}"]]] # [n, 10]
