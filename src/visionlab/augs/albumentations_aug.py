@@ -1,5 +1,5 @@
 import albumentations as A
-from object_detection_impl.utils.registry import load_obj
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 from omegaconf.listconfig import ListConfig
 

@@ -1,9 +1,9 @@
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from object_detection_impl.models.blocks.composites import (
+from visionlab.models.blocks.composites import (
     ConvMixerBlock,
 )
-from object_detection_impl.utils.registry import load_obj
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 
 

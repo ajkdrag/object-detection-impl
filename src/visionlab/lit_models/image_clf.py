@@ -3,7 +3,7 @@ import structlog
 import torch
 import torch.nn as nn
 from lightning.fabric.utilities.throughput import measure_flops
-from object_detection_impl.utils.registry import load_obj
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 
 log = structlog.get_logger()

@@ -2,7 +2,7 @@ import random
 from pathlib import Path
 from typing import List
 
-from object_detection_impl.utils.misc import split_list
+from visionlab.utils.misc import split_list
 
 
 class ClassSubfolderParser:

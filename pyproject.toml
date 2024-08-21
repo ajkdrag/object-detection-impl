@@ -1,5 +1,5 @@
 [project]
-name = "object-detection-impl"
+name = "visionlab"
 version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
@@ -34,5 +34,5 @@ nb = "jupyter-lab --no-browser --ip=0.0.0.0 --port=8888 --NotebookApp.token=''"
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "-e file:///${PROJECT_ROOT}/#egg=object-detection-impl",
+    "-e file:///${PROJECT_ROOT}/#egg=visionlab",
 ]

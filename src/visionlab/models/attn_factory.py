@@ -1,4 +1,4 @@
-from object_detection_impl.models.blocks.attentions import (
+from visionlab.models.blocks.attentions import (
     CBAMBlock,
     ChannelAttentionBlock,
     ECABlock,

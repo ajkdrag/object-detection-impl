@@ -2,12 +2,12 @@ import importlib
 from collections import OrderedDict
 from typing import Any
 
-from object_detection_impl.utils.ml import compute_output_shape
+from visionlab.utils.ml import compute_output_shape
 from omegaconf import DictConfig
 from torch import nn
 
 
-def load_obj(obj_path: str, namespace: str = "object_detection_impl") -> Any:
+def load_obj(obj_path: str, namespace: str = "visionlab") -> Any:
     """
     Extract an object from a given path.
     https://github.com/quantumblacklabs/kedro/blob/9809bd7ca0556531fa4a2fc02d5b2dc26cf8fa97/kedro/utils.py

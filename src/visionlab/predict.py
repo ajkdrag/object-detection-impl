@@ -6,8 +6,8 @@ import structlog
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from object_detection_impl.utils.misc import log_useful_info, set_seed
-from object_detection_impl.utils.registry import load_obj
+from visionlab.utils.misc import log_useful_info, set_seed
+from visionlab.utils.registry import load_obj
 
 log = structlog.get_logger()
 

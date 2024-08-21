@@ -1,10 +1,10 @@
 import torch.nn as nn
-from object_detection_impl.models.blocks.core import (
+from visionlab.models.blocks.core import (
     ConvLayer,
     ScaledResidual,
 )
-from object_detection_impl.utils.ml import init_linear
-from object_detection_impl.utils.registry import load_obj
+from visionlab.utils.ml import init_linear
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 
 

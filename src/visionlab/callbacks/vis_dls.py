@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from lightning.pytorch.callbacks import Callback
-from object_detection_impl.utils.vis import gridify
+from visionlab.utils.vis import gridify
 
 
 class VisualizeDlsCallback(Callback):

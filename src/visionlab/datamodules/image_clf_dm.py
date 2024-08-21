@@ -1,7 +1,7 @@
 import lightning as L
-from object_detection_impl.augs.albumentations_aug import load_augs
-from object_detection_impl.datamodules.parser_factory import FolderParserFactory
-from object_detection_impl.utils.registry import load_obj
+from visionlab.augs.albumentations_aug import load_augs
+from visionlab.datamodules.parser_factory import FolderParserFactory
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 

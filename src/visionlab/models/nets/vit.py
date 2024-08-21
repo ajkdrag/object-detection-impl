@@ -1,11 +1,11 @@
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from object_detection_impl.models.blocks.attentions import (
+from visionlab.models.blocks.attentions import (
     LearnablePositionEnc,
 )
-from object_detection_impl.models.blocks.composites import TransformerEncoder
-from object_detection_impl.utils.ml import init_linear
-from object_detection_impl.utils.registry import load_obj
+from visionlab.models.blocks.composites import TransformerEncoder
+from visionlab.utils.ml import init_linear
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 
 

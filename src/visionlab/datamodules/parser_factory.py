@@ -1,4 +1,4 @@
-from object_detection_impl.datamodules.folder_structs import FolderStructs
+from visionlab.datamodules.folder_structs import FolderStructs
 
 
 class FolderParserFactory:

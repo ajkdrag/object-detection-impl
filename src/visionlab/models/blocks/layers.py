@@ -4,8 +4,8 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange
 from einops.layers.torch import Rearrange
-from object_detection_impl.models.act_factory import Acts
-from object_detection_impl.models.norm_factory import Norms
+from visionlab.models.act_factory import Acts
+from visionlab.models.norm_factory import Norms
 from torch import nn
 
 

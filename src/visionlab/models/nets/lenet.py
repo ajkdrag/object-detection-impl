@@ -1,21 +1,21 @@
 import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from object_detection_impl.models.blocks.attentions import (
+from visionlab.models.blocks.attentions import (
     Attentions,
     MultiHead_SA,
 )
-from object_detection_impl.models.blocks.composites import (
+from visionlab.models.blocks.composites import (
     ConvMixerBlock,
     DenseNetBlock,
     InceptionBlock,
     MLPMixerBlock,
     ResNetBlock,
 )
-from object_detection_impl.models.blocks.core import (
+from visionlab.models.blocks.core import (
     ConvLayer,
 )
-from object_detection_impl.utils.registry import load_obj
+from visionlab.utils.registry import load_obj
 from omegaconf import DictConfig
 
 

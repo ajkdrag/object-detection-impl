@@ -1,7 +1,7 @@
 from enum import Enum
 
-from object_detection_impl.datamodules.parsers.cls_subfolder import ClassSubfolderParser
-from object_detection_impl.datamodules.parsers.splits_subfolder import (
+from visionlab.datamodules.parsers.cls_subfolder import ClassSubfolderParser
+from visionlab.datamodules.parsers.splits_subfolder import (
     SplitsSubfolderParser,
 )
 

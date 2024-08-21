@@ -2,9 +2,9 @@ import lightning as L
 import numpy as np
 import structlog
 import torch
-from object_detection_impl.augs.albumentations_aug import load_augs
-from object_detection_impl.utils.registry import load_obj
-from object_detection_impl.utils.vis import draw_labels_on_images
+from visionlab.augs.albumentations_aug import load_augs
+from visionlab.utils.registry import load_obj
+from visionlab.utils.vis import draw_labels_on_images
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, random_split
 from torch.utils.data._utils.collate import default_collate

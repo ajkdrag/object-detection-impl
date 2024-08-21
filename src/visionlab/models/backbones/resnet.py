@@ -1,7 +1,7 @@
 import timm
 import torch.nn as nn
-from object_detection_impl.models.backbones.base import Backbone
-from object_detection_impl.utils.ml import freeze_until
+from visionlab.models.backbones.base import Backbone
+from visionlab.utils.ml import freeze_until
 
 
 class ResNetBackbone(Backbone):

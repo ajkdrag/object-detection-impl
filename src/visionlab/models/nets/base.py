@@ -1,6 +1,6 @@
 import torch
-from object_detection_impl.utils.ml import init_linear
-from object_detection_impl.utils.registry import load_module
+from visionlab.utils.ml import init_linear
+from visionlab.utils.registry import load_module
 from torch import nn
 
 
