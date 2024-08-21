@@ -1,0 +1,10 @@
+class_name: models.nets.base.ClfModel
+ip: {c: 3, h: 32, w: 32}
+layers:
+  s1: [ip, 1, SPT, [3, 128, 4]] # [n, 8*8, 128]
+  t1: [s1, 1, T2TBlock, [128, 192, 8, {"heads": 2}]] # [n, 8*8, 192]
+  t2: [t1, 2, TransformerEncoder, [{"c1": 192, "heads": 2, "drop": 0.0}]] # [n, 64, 192]
+  t3: [t2, 1, T2TBlock, [192, 256, 8, {"s": 2, "heads": 2}]] # [n, 4*4, 256]
+  t4: [t3, 2, TransformerEncoder, [{"c1": 256, "heads": 8, "drop": 0.1}]] # [n, 64, 128]
+  n1: [t4, 1, SequencePooling, [256]] # [n, 128]
+  h1: [n1, 1, FCHead, [256, ["${datamodule.dataset.n_classes}"]]] # [n, 10]

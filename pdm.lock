@@ -441,7 +441,7 @@ name = "einops"
 version = "0.8.0"
 requires_python = ">=3.8"
 summary = "A new flavour of deep learning operations"
-groups = ["default"]
+groups = ["default", "dev"]
 files = [
     {file = "einops-0.8.0-py3-none-any.whl", hash = "sha256:9572fb63046264a862693b0a87088af3bdc8c068fde03de63453cbbde245465f"},
     {file = "einops-0.8.0.tar.gz", hash = "sha256:63486517fed345712a8385c100cb279108d9d47e6ae59099b07657e983deae85"},
@@ -1680,7 +1680,7 @@ files = [
 ]
 
 [[package]]
-name = "object-detection-impl"
+name = "visionlab"
 version = "0.1.0"
 requires_python = "==3.9.*"
 editable = true
@@ -1689,6 +1689,7 @@ summary = "Default template for PDM package"
 groups = ["dev"]
 dependencies = [
     "albumentations>=1.4.6",
+    "einops>=0.8.0",
     "faster-coco-eval>=1.5.4",
     "hydra-core>=1.3.2",
     "jupyter>=1.0.0",

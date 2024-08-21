@@ -15,7 +15,7 @@ defaults:
 
 general:
   logs_folder_name: logs
-  root_dir: /home/ajkdrag/workspace/projects/object-detection-impl/experiments
+  root_dir: /home/ajkdrag/workspace/projects/visionlab/experiments
   workspace: ajkdrag
   project_name: od-impl
   device: cuda

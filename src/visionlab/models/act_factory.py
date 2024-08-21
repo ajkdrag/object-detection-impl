@@ -12,6 +12,8 @@ class Acts:
             return nn.ReLU(*args, **kwargs)
         elif act == "gelu":
             return nn.GELU(*args, **kwargs)
+        elif act == "silu":
+            return nn.SiLU(*args, **kwargs)
         elif act == "sigmoid":
             return nn.Sigmoid(*args, **kwargs)
         elif act == "hsigmoid":

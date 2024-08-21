@@ -1,4 +1,4 @@
-path: /home/ajkdrag/workspace/projects/object-detection-impl/data/cifar10
+path: /home/ajkdrag/workspace/projects/visionlab/data/cifar10
 class_name: datamodules.tv_clf_dm.TorchvisionClfDatamodule
 dataset:
   class_name: datasets.tv_clf_ds.TorchvisionClfDataset

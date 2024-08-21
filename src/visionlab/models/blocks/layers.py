@@ -1,11 +1,27 @@
 import math
 
 import torch
+import torch.nn.functional as F
 from einops import rearrange
 from einops.layers.torch import Rearrange
 from object_detection_impl.models.act_factory import Acts
 from object_detection_impl.models.norm_factory import Norms
 from torch import nn
+
+
+class Shifting(nn.Module):
+    def __init__(self, shift):
+        super().__init__()
+        self.shift = shift
+
+    def forward(self, x):
+        x_pad = F.pad(x, (self.shift, self.shift, self.shift, self.shift))
+        x_lu = x_pad[:, :, : -self.shift * 2, : -self.shift * 2]
+        x_ru = x_pad[:, :, : -self.shift * 2, self.shift * 2 :]
+        x_lb = x_pad[:, :, self.shift * 2 :, : -self.shift * 2]
+        x_rb = x_pad[:, :, self.shift * 2 :, self.shift * 2 :]
+        x_cat = torch.cat([x, x_lu, x_ru, x_lb, x_rb], dim=1)
+        return x_cat
 
 
 class NormAct(nn.Module):
@@ -239,6 +255,22 @@ class ShortcutLayer(nn.Module):
         return self.shortcut(x)
 
 
+class LightShortcutLayer(nn.Module):
+    def __init__(self, c1, c2=None, k=3, s=1, g=1):
+        super().__init__()
+        c2 = c2 or c1
+        if c1 == c2 and s == 1:
+            self.shortcut = nn.Identity()
+        else:
+            self.shortcut = nn.Sequential(
+                nn.AvgPool2d(k, stride=s, padding=1),
+                Conv1x1Layer(c1, c2, g=g, act="noop"),
+            )
+
+    def forward(self, x):
+        return self.shortcut(x)
+
+
 class Shortcut3x3Layer(nn.Module):
     def __init__(self, c1, c2=None, s=1):
         super().__init__()
@@ -322,6 +354,8 @@ class LightBottleneckLayer(nn.Sequential):
         g=1,
         act="relu",
         norm="bn2d",
+        pw_act="noop",
+        first_1x1_optional=True,
     ):
         c2 = c2 or c1
         c_ = math.ceil(f * c1)
@@ -332,10 +366,10 @@ class LightBottleneckLayer(nn.Sequential):
                 act=act,
                 norm=norm,
             )
-            if c_ != c1
+            if f != 1 and first_1x1_optional
             else nn.Identity(),
-            ConvLayer(c_, c_, k, s, g=1, act=act, norm=norm),
-            Conv1x1Layer(c_, c2, act="noop", norm=norm),
+            ConvLayer(c_, c_, k, s, g=g, act=act, norm=norm),
+            Conv1x1Layer(c_, c2, act=pw_act, norm=norm),
         )
 
 
@@ -349,9 +383,10 @@ class DWLightBottleneckLayer(LightBottleneckLayer):
         s=1,
         act="relu",
         norm="bn2d",
+        **kwargs,
     ):
         g = math.ceil(f * c1)
-        super().__init__(c1, c2, f, k, s, g, act, norm)
+        super().__init__(c1, c2, f, k, s, g, act, norm, **kwargs)
 
 
 class DenseShortcutLayer(nn.Module):
@@ -371,12 +406,25 @@ class DenseShortcutLayer(nn.Module):
 
 
 class ScaledResidual(nn.Module):
-    def __init__(self, *layers, shortcut=None, skip=False):
+    def __init__(self, *layers, shortcut=None, apply_shortcut=True):
         super().__init__()
         self.shortcut = nn.Identity() if shortcut is None else shortcut
         self.residual = nn.Sequential(*layers)
-        self.skip = int(skip)
-        self.gamma = nn.Parameter(torch.zeros(1)) if not skip else 1
+        self.apply_shortcut = int(apply_shortcut)
+        self.gamma = nn.Parameter(torch.zeros(1)) if apply_shortcut else 1
 
     def forward(self, x):
-        return (1 - self.skip) * self.shortcut(x) + self.gamma * self.residual(x)
+        residual = self.gamma * self.residual(x)
+        if self.apply_shortcut:
+            return self.shortcut(x) + residual
+        return residual
+
+
+class ChannelShuffle(nn.Module):
+    def __init__(self, g):
+        super().__init__()
+        self.g = g
+        self.block = Rearrange("n (g d) h w -> n (d g) h w", g=g)
+
+    def forward(self, x):
+        return self.block(x)

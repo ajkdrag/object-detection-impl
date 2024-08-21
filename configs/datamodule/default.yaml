@@ -1,4 +1,4 @@
-path: /home/ajkdrag/workspace/projects/object-detection-impl/data
+path: /home/ajkdrag/workspace/projects/visionlab/data
 class_name: datamodules.image_clf_dm.ImageClfDatamodule
 dataset:
   class_name: datasets.image_clf_ds.ImageClfDataset

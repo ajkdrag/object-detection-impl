@@ -3,7 +3,8 @@ ip: {c: 3, h: 32, w: 32}
 layers:
   s1: [ip, 1, ConvMpPatch, [3, 64, {k: 3, s: 1, mp: false}]] # [n, 64, 32, 32]
 
-  t3: [s1, 1, MobileNetBlock, [64, 128, {f: 2, s: 2, k: 5}]] # [n, 128, 16, 16] 
+  t2: [s1, 1, MobileNetBlock, [64, 64, {f: 4, s: 1, k: 5}]] # [n, 128, 16, 16] 
+  t3: [t2, 1, MobileNetBlock, [64, 128, {f: 2, s: 2, k: 3}]] # [n, 128, 16, 16] 
   t4: [t3, 1, MobileNetBlock, [128, 128, {f: 1, s: 2, attn: se, act: hswish}]] # [n, 128, 8, 8] 
   t5: [t4, 1, MobileNetBlock, [128, 256, {f: 1, s: 2, attn: se, act: hswish}]] # [n, 256, 4, 4] 
 

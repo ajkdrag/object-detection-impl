@@ -36,13 +36,13 @@ def draw_labels_on_images(images, labels, label_h=30, size=None):
     return torch.stack(labeled_images, dim=0)
 
 
-def gridify(visualized, fp, scale=None, save=True, **kwargs):
+def gridify(visualized, fp=None, scale=None, **kwargs):
     im = to_pil_image(make_grid(visualized, **kwargs))
     if scale is not None:
         og_size = im.size
         size = tuple([int(x * scale) for x in og_size])
         im = im.resize(size)
-    if save:
+    if fp is not None:
         im.save(fp)
     else:
         return im

@@ -4,6 +4,7 @@ from einops.layers.torch import Rearrange
 from .layers import (
     BasicFCLayer,
     ConvLayer,
+    Shifting,
     SoftSplit,
     UnflattenLayer,
 )
@@ -117,3 +118,26 @@ class ConvMpPatch(nn.Module):
 
     def forward(self, x):
         return self.block(x)
+
+
+class SPT(nn.Module):
+    def __init__(self, c1, c2, patch_size=16):
+        super().__init__()
+
+        self.shifting = Shifting(patch_size // 2)
+
+        patch_dim = (c1 * 5) * (patch_size**2)
+
+        self.patching = nn.Sequential(
+            Rearrange(
+                "b c (h p1) (w p2) -> b (h w) (p1 p2 c)", p1=patch_size, p2=patch_size
+            ),
+            nn.LayerNorm(patch_dim),
+            nn.Linear(patch_dim, c2),
+        )
+
+    def forward(self, x):
+        out = self.shifting(x)
+        out = self.patching(out)
+
+        return out

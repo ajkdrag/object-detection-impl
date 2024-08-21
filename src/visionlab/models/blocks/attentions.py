@@ -14,6 +14,48 @@ from .layers import (
 )
 
 
+class ConvLikeAttention(nn.Module):
+    def __init__(
+        self,
+        c1,
+        c2,
+        s=1,
+        f_k=1,
+        f_v=2,
+        heads=2,
+        drop=0.0,
+    ):
+        super().__init__()
+        self.heads = heads
+        self.drop = drop
+        dim_k = int(c1 * f_k)
+        dim_v = int(c1 * f_v)
+        self.to_q = Conv1x1Layer(c1, dim_k * heads, s=s, act="noop", norm="bn2d")
+        self.to_k = Conv1x1Layer(c1, dim_k * heads, act="noop", norm="bn2d")
+        self.to_v = Conv1x1Layer(c1, dim_v * heads, act="noop", norm="bn2d")
+        self.to_out = Conv1x1Layer(
+            dim_v * heads,
+            c2,
+            act="hswish",
+            norm="bn2d",
+            pre_normact=True,
+        )
+
+    def forward(self, x):
+        b, c, h, w = x.shape
+        q, k, v = self.to_q(x), self.to_k(x), self.to_v(x)
+        q_h, q_w = q.shape[-2:]
+        q, k, v = map(
+            lambda t: rearrange(
+                t, "b (heads d) x y -> b heads (x y) d", heads=self.heads
+            ),
+            (q, k, v),
+        )
+        out = F.scaled_dot_product_attention(q, k, v, dropout_p=self.drop)
+        out = rearrange(out, "b heads (x y) d -> b (heads d) x y", x=q_h, y=q_w)
+        return self.to_out(out)  # n, c, h, w
+
+
 class MultiScaleSAV2(nn.Module):
     def __init__(
         self,
@@ -32,13 +74,11 @@ class MultiScaleSAV2(nn.Module):
         self.h = h
         self.drop = drop
         self.pool_q = nn.Sequential(
-            nn.MaxPool2d(k_q, s_q, (k_q - 1) //
-                         2) if k_q > 1 else nn.Identity(),
+            nn.MaxPool2d(k_q, s_q, (k_q - 1) // 2) if k_q > 1 else nn.Identity(),
             Rearrange("n c h w -> n (h w) c"),
         )
         self.pool_kv = nn.Sequential(
-            nn.MaxPool2d(k_kv, s_kv, (k_kv - 1) //
-                         2) if k_kv > 1 else nn.Identity(),
+            nn.MaxPool2d(k_kv, s_kv, (k_kv - 1) // 2) if k_kv > 1 else nn.Identity(),
             Rearrange("n c h w -> n (h w) c"),
         )
         self.qkv = nn.Sequential(

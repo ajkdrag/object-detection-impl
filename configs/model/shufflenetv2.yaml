@@ -1,0 +1,14 @@
+class_name: models.nets.base.ClfModel
+ip: { c: 3, h: 32, w: 32 }
+layers:
+  s1: [ip, 1, ConvMpPatch, [3, 24, { k: 3, s: 1 }]] # [n, 24, 16, 16]
+  m1: [s1, 2, ShuffleNetV2Block, [24, { k: 5, s: 1 }]] # [n, 24, 16, 16]
+  m2: [m1, 1, ShuffleNetV2Block, [24, 48, { k: 3, s: 2 }]] # [n, 32, 8, 8]
+  m3: [m2, 3, ShuffleNetV2Block, [48, { k: 3, s: 1 }]] # [n, 32, 8, 8]
+  m4: [m3, 1, ShuffleNetV2Block, [48, 96, { k: 3, s: 2 }]] # [n, 64, 4, 4]
+  m5: [m4, 7, ShuffleNetV2Block, [96, { k: 3, s: 1, act: hswish }]] # [n, 64, 4, 4]
+  m6: [m5, 1, ConvLayer, [96, 128, { k: 3, s: 1, act: hswish }]] # [n, 128, 4, 4]
+  m7: [m6, 3, ShuffleNetV2Block, [128, { k: 3, s: 1, act: hswish }]] # [n, 128, 4, 4]
+  m8: [m7, 1, Conv1x1Layer, [128, 512, { act: silu }]] # [n, 256, 4, 4]
+  n1: [m8, 1, AvgPool, [512, { flatten: true }]] # [n, 256]
+  h2: [n1, 1, FCHead, [512, ["${datamodule.dataset.n_classes}"]]] # [n, num_classes]

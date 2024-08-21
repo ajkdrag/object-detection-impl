@@ -1,8 +1,8 @@
 lr: 0.000001
-max_lr: 0.01 # vit: 0.001 # resnets: 0.01
-wd: 0.0005 # vit: 0.05
+max_lr: 0.01 # vit: 0.001 # conv: 0.01
+wd: 0.0005 # vit: 0.05, conv: 0.0005
 bs: 128
-epochs: 30
+epochs: 60
 seed: 666
 debug: False
 mode: max
